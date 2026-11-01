@@ -18,6 +18,8 @@ jobs:
           tar -xzf /tmp/sherlock.tar.gz --strip-components=1 -C upstream/sherlock/source
           test -f upstream/sherlock/source/sherlock_project/resources/data.json
           cp upstream/sherlock/source/sherlock_project/resources/data.json upstream/sherlock/data.json
+          mkdir -p public
+          cp upstream/sherlock/data.json public/data.json
           if [ -f upstream/sherlock/source/LICENSE ]; then
             cp upstream/sherlock/source/LICENSE upstream/sherlock/LICENSE
           elif [ -f upstream/sherlock/source/LICENSE.txt ]; then
@@ -38,7 +40,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add upstream/sherlock
+          git add upstream/sherlock public/data.json
           if git diff --cached --quiet; then
             echo "Upstream source and catalog are already current."
           else
