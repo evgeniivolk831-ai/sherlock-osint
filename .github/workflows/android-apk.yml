@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p android/app/src/main/assets/www
           cp -R public/. android/app/src/main/assets/www/
+          if [ -f upstream/sherlock/data.json ]; then cp upstream/sherlock/data.json android/app/src/main/assets/www/data.json; fi
       - name: Build debug APK
         working-directory: android
         run: gradle --no-daemon assembleDebug
