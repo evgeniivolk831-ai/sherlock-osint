@@ -5,7 +5,23 @@ if($("apiBase")) $("apiBase").value=apiBase;
 if(apiBase && $("serverState")) $("serverState").textContent="API Render настроен";
 function catalogInfo(){$("catalogState").textContent=catalog?`Установлено сайтов: ${Object.keys(catalog).filter(k=>k!=="$schema").length}`:"Каталог не установлен";}
 catalogInfo();
-if(!catalog){fetch("data.json").then(r=>{if(!r.ok)throw Error("catalog unavailable");return r.json()}).then(data=>{catalog=data;localStorage.setItem("sherlock-catalog",JSON.stringify(data));catalogInfo()}).catch(()=>{});}
+if(!catalog){
+  const installCatalog=data=>{
+    if(!data||Array.isArray(data)||typeof data!=="object")throw Error("Некорректный каталог");
+    catalog=data;localStorage.setItem("sherlock-catalog",JSON.stringify(data));catalogInfo();
+  };
+  fetch("data.json").then(r=>{if(!r.ok)throw Error("catalog unavailable");return r.json()})
+    .then(installCatalog)
+    .catch(()=>new Promise((resolve,reject)=>{
+      try{
+        const xhr=new XMLHttpRequest();
+        xhr.open("GET","data.json",true);
+        xhr.onload=()=>{try{if(xhr.status===0||xhr.status===200)resolve(JSON.parse(xhr.responseText));else reject(Error("catalog unavailable"))}catch(e){reject(e)}};
+        xhr.onerror=()=>reject(Error("catalog unavailable"));
+        xhr.send();
+      }catch(e){reject(e)}
+    }).then(installCatalog).catch(()=>{catalogInfo();if($("serverState"))$("serverState").textContent="Не удалось загрузить встроенный каталог — выберите data.json вручную"}));
+}
 if($("saveServer")) $("saveServer").onclick=()=>{apiBase=$("apiBase").value.trim().replace(/\/$/,"");if(apiBase&&!/^https:\/\//i.test(apiBase)){alert("Адрес сервера должен начинаться с https://");return}localStorage.setItem("sherlock-api-base",apiBase);if($("serverState")) $("serverState").textContent=apiBase?"Адрес сохранён":"Укажите адрес сервера";};
 $("catalogFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const parsed=JSON.parse(await f.text());if(!parsed||Array.isArray(parsed)||typeof parsed!=="object")throw Error("Ожидается JSON-объект сайтов.");const valid=Object.entries(parsed).filter(([k,v])=>k!=="$schema"&&v&&typeof v.url==="string"&&v.url.startsWith("https://"));if(!valid.length)throw Error("В файле не найдено сайтов с HTTPS-шаблонами.");catalog=parsed;localStorage.setItem("sherlock-catalog",JSON.stringify(catalog));catalogInfo();alert(`Каталог установлен: ${valid.length} сайтов.`)}catch(err){alert("Не удалось установить каталог: "+err.message)}e.target.value="";});
 $("clearCatalog").onclick=()=>{if(confirm("Удалить установленный каталог?")){catalog=null;localStorage.removeItem("sherlock-catalog");catalogInfo()}};
