@@ -6,7 +6,7 @@
 <section class="hero"><p class="eyebrow">ПОИСК ПУБЛИЧНЫХ ПРОФИЛЕЙ</p><h1>Найди публичный<br><em>цифровой след</em></h1><p class="muted">Проверка username по правилам установленного каталога Sherlock.</p>
 <div class="search"><input id="username" placeholder="Введите username" autocomplete="off"><button id="scan">Проверить</button></div>
 <div class="tools"><label class="upload">Установить data.json<input id="catalogFile" type="file" accept=".json,application/json"></label><span id="catalogState">Каталог не установлен</span><button id="clearCatalog" class="ghost">Сбросить</button></div>
-<div class="hint">Каталог хранится в этом браузере. Используйте официальный data.json проекта Sherlock.</div></section>
+<div class="server-config"><label for="apiBase">Адрес API-сервера</label><div class="search"><input id="apiBase" type="url" placeholder="https://ваш-сервер.up.railway.app"><button id="saveServer" type="button">Сохранить</button></div><small id="serverState">Укажите адрес backend один раз. Он сохранится на устройстве.</small></div><div class="hint">Каталог загружается автоматически из сборки; при необходимости можно выбрать data.json вручную.</div></section>
 <section id="progress" class="progress hidden"><div class="spinner"></div><span>Проверяю сайты каталога…</span></section>
 <section id="summary" class="stats hidden"></section>
 <section class="results-head"><h2>Результаты</h2><div class="filters"><button class="filter active" data-filter="all">Все</button><button class="filter" data-filter="found">Найдены</button><button class="filter" data-filter="unknown">Неизвестно</button></div></section>
