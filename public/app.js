@@ -1,0 +1,41 @@
+const $=id=>document.getElementById(id);
+let catalog=JSON.parse(localStorage.getItem("sherlock-catalog")||"null");
+let current=[],filter="all";
+function catalogInfo(){ $("catalogState").textContent=catalog?`Установлено сайтов: ${Object.keys(catalog).filter(k=>k!=="$schema").length}`:"Каталог не установлен"; }
+catalogInfo();
+$("catalogFile").addEventListener("change",async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{const parsed=JSON.parse(await f.text());if(!parsed||Array.isArray(parsed)||typeof parsed!=="object")throw Error("Ожидается JSON-объект сайтов.");
+ const valid=Object.entries(parsed).filter(([k,v])=>k!=="$schema"&&v&&typeof v.url==="string"&&v.url.startsWith("https://"));
+ if(!valid.length)throw Error("В файле не найдено сайтов с HTTPS-шаблонами.");
+ catalog=parsed;localStorage.setItem("sherlock-catalog",JSON.stringify(catalog));catalogInfo();alert(`Каталог установлен: ${valid.length} сайтов.`)
+ }catch(err){alert("Не удалось установить каталог: "+err.message)}e.target.value="";
+});
+$("clearCatalog").onclick=()=>{if(confirm("Удалить установленный каталог?")){catalog=null;localStorage.removeItem("sherlock-catalog");catalogInfo()}};
+$("scan").onclick=scan;$("username").addEventListener("keydown",e=>{if(e.key==="Enter")scan()});
+async function scan(){
+ const username=$("username").value.trim().replace(/^@/,"");
+ if(!catalog){alert("Сначала установите официальный data.json.");return}
+ if(!username){alert("Введите username.");return}
+ $("progress").classList.remove("hidden");$("summary").classList.add("hidden");$("scan").disabled=true;
+ try{const r=await fetch("/api/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,catalog,limit:200})});
+ const data=await r.json();if(!r.ok)throw Error(data.error||"Ошибка сканирования");
+ current=data.results;render(data);const history=JSON.parse(localStorage.getItem("sherlock-history")||"[]");history.unshift({username,at:new Date().toISOString(),found:data.found,checked:data.checked});localStorage.setItem("sherlock-history",JSON.stringify(history.slice(0,30)));
+ }catch(e){alert(e.message)}finally{$("progress").classList.add("hidden");$("scan").disabled=false}
+}
+function render(data){
+ $("summary").innerHTML=[["Проверено",data.checked],["Найдено",data.found],["Не найдено",data.notFound],["Неизвестно",data.unknown]].map(([k,v])=>`<div class="stat"><b>${v}</b><span>${k}</span></div>`).join("");
+ $("summary").classList.remove("hidden");renderResults();
+}
+function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function renderResults(){
+ const rows=current.filter(x=>filter==="all"||x.status===filter);
+ $("results").innerHTML=rows.length?rows.map(x=>`<article class="profile"><div class="profiletop"><h3>${esc(x.site)}</h3><span class="status ${x.status}">${x.status==="found"?"НАЙДЕНО":x.status==="not_found"?"НЕ НАЙДЕНО":"НЕИЗВЕСТНО"}</span></div>
+ ${x.displayName?`<div class="field"><label>Публичное имя страницы</label><p>${esc(x.displayName)}</p></div>`:""}
+ ${x.bio?`<div class="field"><label>Публичное описание</label><p>${esc(x.bio)}</p></div>`:""}
+ ${x.avatarUrl?`<img class="avatar" src="${esc(x.avatarUrl)}" alt="Публичное изображение" loading="lazy">`:""}
+ <div class="field"><label>Публичная ссылка</label><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.url)}</a></div>
+ ${x.httpStatus?`<div class="field"><label>HTTP статус</label><p>${x.httpStatus}</p></div>`:""}
+ ${x.reason?`<div class="field"><label>Причина</label><p>${esc(x.reason)}</p></div>`:""}</article>`).join(""):`<div class="empty">Нет результатов для выбранного фильтра.</div>`;
+}
+document.querySelectorAll(".filter").forEach(b=>b.onclick=()=>{document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.filter;renderResults()});
