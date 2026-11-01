@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080d11"><title>Sherlock OSINT</title><link rel="stylesheet" href="/style.css"></head>
+<body><header><div class="brand"><span class="mark">◉</span><div><b>Sherlock</b><small>OSINT</small></div></div><span class="tag">PUBLIC PROFILE SEARCH</span></header>
+<main>
+<section class="hero"><p class="eyebrow">ПОИСК ПУБЛИЧНЫХ ПРОФИЛЕЙ</p><h1>Найди публичный<br><em>цифровой след</em></h1><p class="muted">Проверка username по правилам установленного каталога Sherlock.</p>
+<div class="search"><input id="username" placeholder="Введите username" autocomplete="off"><button id="scan">Проверить</button></div>
+<div class="tools"><label class="upload">Установить data.json<input id="catalogFile" type="file" accept=".json,application/json"></label><span id="catalogState">Каталог не установлен</span><button id="clearCatalog" class="ghost">Сбросить</button></div>
+<div class="hint">Каталог хранится в этом браузере. Используйте официальный data.json проекта Sherlock.</div></section>
+<section id="progress" class="progress hidden"><div class="spinner"></div><span>Проверяю сайты каталога…</span></section>
+<section id="summary" class="stats hidden"></section>
+<section class="results-head"><h2>Результаты</h2><div class="filters"><button class="filter active" data-filter="all">Все</button><button class="filter" data-filter="found">Найдены</button><button class="filter" data-filter="unknown">Неизвестно</button></div></section>
+<section id="results" class="results"><div class="empty">Загрузите data.json и введите username, чтобы начать поиск.</div></section>
+<section class="privacy"><b>Только публичные сведения</b><p>Показываются общедоступные метаданные страниц. Приложение не ищет утечки, пароли, закрытые базы, телефоны, домашние адреса, банковские данные или государственные идентификаторы. CAPTCHA и ограничения сайтов не обходятся.</p></section>
+</main><footer>Sherlock OSINT · community-compatible engine</footer><script src="/app.js"></script></body></html>
