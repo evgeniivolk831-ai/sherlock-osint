@@ -13,12 +13,26 @@ jobs:
       - name: Download official Sherlock source, catalog and license
         run: |
           rm -rf upstream/sherlock/source
-          mkdir -p upstream/sherlock/source
+          mkdir -p upstream/sherlock/source upstream/sherlock
           curl -fL https://codeload.github.com/sherlock-project/sherlock/tar.gz/refs/heads/master -o /tmp/sherlock.tar.gz
           tar -xzf /tmp/sherlock.tar.gz --strip-components=1 -C upstream/sherlock/source
+          test -f upstream/sherlock/source/sherlock_project/resources/data.json
           cp upstream/sherlock/source/sherlock_project/resources/data.json upstream/sherlock/data.json
-          cp upstream/sherlock/source/LICENSE upstream/sherlock/LICENSE
-          cp upstream/sherlock/source/README.md upstream/sherlock/README-upstream.md
+          if [ -f upstream/sherlock/source/LICENSE ]; then
+            cp upstream/sherlock/source/LICENSE upstream/sherlock/LICENSE
+          elif [ -f upstream/sherlock/source/LICENSE.txt ]; then
+            cp upstream/sherlock/source/LICENSE.txt upstream/sherlock/LICENSE
+          else
+            echo "Upstream LICENSE file was not found" >&2
+            exit 1
+          fi
+          if [ -f upstream/sherlock/source/README.md ]; then
+            cp upstream/sherlock/source/README.md upstream/sherlock/README-upstream.md
+          elif [ -f upstream/sherlock/source/README.rst ]; then
+            cp upstream/sherlock/source/README.rst upstream/sherlock/README-upstream.rst
+          else
+            printf '%s\n' "Official Sherlock source is stored in upstream/sherlock/source." "Upstream: https://github.com/sherlock-project/sherlock" > upstream/sherlock/README-upstream.md
+          fi
           python -m json.tool upstream/sherlock/data.json >/dev/null
       - name: Commit upstream update
         run: |
