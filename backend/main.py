@@ -42,8 +42,8 @@ async def scan(payload: ScanRequest):
         raise HTTPException(400, "Username: 2–40 символов, латиница, цифры, точка, дефис или подчёркивание.")
     async with scan_lock:
         with tempfile.TemporaryDirectory(prefix="sherlock-") as tmp:
-            output = Path(tmp) / "results.csv"
-            command = ["sherlock", "--local", "--csv", "--output", str(output), "--timeout", "10", "--print-all", "--no-color", username]
+            output = Path(tmp) / f"{username}.csv"
+            command = ["sherlock", "--local", "--csv", "--folderoutput", tmp, "--timeout", "10", "--print-all", "--no-color", username]
             try:
                 proc = await asyncio.create_subprocess_exec(command[0], *command[1:], stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
                 stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=240)
@@ -65,7 +65,7 @@ async def scan(payload: ScanRequest):
     for item in raw[:payload.limit]:
         site = item.get("name") or item.get("site") or "Unknown site"
         url = safe_https(item.get("url_user") or item.get("url"))
-        status_text = (item.get("status") or item.get("exists") or "").lower()
+        status_text = (item.get("exists") or item.get("status") or "").lower()
         if status_text in ("claimed", "found", "true", "yes"):
             status = "found"
         elif status_text in ("available", "not claimed", "not_found", "false", "no"):
