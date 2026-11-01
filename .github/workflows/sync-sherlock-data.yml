@@ -1,4 +1,4 @@
-name: Sync official Sherlock catalog
+name: Sync official Sherlock source and catalog
 on:
   workflow_dispatch:
   schedule:
@@ -10,21 +10,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download official catalog and license
+      - name: Download official Sherlock source, catalog and license
         run: |
-          mkdir -p upstream/sherlock
-          curl -fL https://raw.githubusercontent.com/sherlock-project/sherlock/master/sherlock_project/resources/data.json -o upstream/sherlock/data.json
-          curl -fL https://raw.githubusercontent.com/sherlock-project/sherlock/master/LICENSE -o upstream/sherlock/LICENSE
-          curl -fL https://raw.githubusercontent.com/sherlock-project/sherlock/master/README.md -o upstream/sherlock/README-upstream.md
+          rm -rf upstream/sherlock/source
+          mkdir -p upstream/sherlock/source
+          curl -fL https://codeload.github.com/sherlock-project/sherlock/tar.gz/refs/heads/master -o /tmp/sherlock.tar.gz
+          tar -xzf /tmp/sherlock.tar.gz --strip-components=1 -C upstream/sherlock/source
+          cp upstream/sherlock/source/sherlock_project/resources/data.json upstream/sherlock/data.json
+          cp upstream/sherlock/source/LICENSE upstream/sherlock/LICENSE
+          cp upstream/sherlock/source/README.md upstream/sherlock/README-upstream.md
           python -m json.tool upstream/sherlock/data.json >/dev/null
-      - name: Commit catalog update
+      - name: Commit upstream update
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add upstream/sherlock
           if git diff --cached --quiet; then
-            echo "Upstream catalog is already current."
+            echo "Upstream source and catalog are already current."
           else
-            git commit -m "Sync official Sherlock catalog"
+            git commit -m "Sync official Sherlock source and catalog"
             git push
           fi
