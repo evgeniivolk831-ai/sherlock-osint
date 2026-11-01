@@ -1,10 +1,11 @@
 const $=id=>document.getElementById(id);
 let catalog=JSON.parse(localStorage.getItem("sherlock-catalog")||"null");
 let current=[],filter="all",apiBase=localStorage.getItem("sherlock-api-base")||"";
-$("apiBase").value=apiBase;
+if($("apiBase")) $("apiBase").value=apiBase;
 function catalogInfo(){$("catalogState").textContent=catalog?`Установлено сайтов: ${Object.keys(catalog).filter(k=>k!=="$schema").length}`:"Каталог не установлен";}
 catalogInfo();
-$("saveServer").onclick=()=>{apiBase=$("apiBase").value.trim().replace(/\/$/,"");if(apiBase&&!/^https:\/\//i.test(apiBase)){alert("Адрес сервера должен начинаться с https://");return}localStorage.setItem("sherlock-api-base",apiBase);$("serverState").textContent=apiBase?"Адрес сохранён":"Используется текущий адрес";};
+if(!catalog){fetch("data.json").then(r=>{if(!r.ok)throw Error("catalog unavailable");return r.json()}).then(data=>{catalog=data;localStorage.setItem("sherlock-catalog",JSON.stringify(data));catalogInfo()}).catch(()=>{});}
+if($("saveServer")) $("saveServer").onclick=()=>{apiBase=$("apiBase").value.trim().replace(/\/$/,"");if(apiBase&&!/^https:\/\//i.test(apiBase)){alert("Адрес сервера должен начинаться с https://");return}localStorage.setItem("sherlock-api-base",apiBase);if($("serverState")) $("serverState").textContent=apiBase?"Адрес сохранён":"Укажите адрес сервера";};
 $("catalogFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const parsed=JSON.parse(await f.text());if(!parsed||Array.isArray(parsed)||typeof parsed!=="object")throw Error("Ожидается JSON-объект сайтов.");const valid=Object.entries(parsed).filter(([k,v])=>k!=="$schema"&&v&&typeof v.url==="string"&&v.url.startsWith("https://"));if(!valid.length)throw Error("В файле не найдено сайтов с HTTPS-шаблонами.");catalog=parsed;localStorage.setItem("sherlock-catalog",JSON.stringify(catalog));catalogInfo();alert(`Каталог установлен: ${valid.length} сайтов.`)}catch(err){alert("Не удалось установить каталог: "+err.message)}e.target.value="";});
 $("clearCatalog").onclick=()=>{if(confirm("Удалить установленный каталог?")){catalog=null;localStorage.removeItem("sherlock-catalog");catalogInfo()}};
 $("scan").onclick=scan;$("username").addEventListener("keydown",e=>{if(e.key==="Enter")scan()});
