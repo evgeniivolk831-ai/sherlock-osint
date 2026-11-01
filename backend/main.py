@@ -1,6 +1,6 @@
 import asyncio
-import json
-import os
+import csv
+import io
 import re
 import tempfile
 from pathlib import Path
@@ -8,19 +8,13 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "public"
 app = FastAPI(title="Sherlock OSINT API", version="1.0.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 scan_lock = asyncio.Semaphore(1)
 
 class ScanRequest(BaseModel):
@@ -28,16 +22,14 @@ class ScanRequest(BaseModel):
     catalog: dict | None = None
     limit: int = Field(default=150, ge=1, le=200)
 
-def clean_url(value):
+def safe_https(value):
     if not isinstance(value, str):
         return ""
     try:
-        parsed = urlparse(value)
-        if parsed.scheme == "https" and parsed.netloc:
-            return value
+        p = urlparse(value)
+        return value if p.scheme == "https" and p.netloc else ""
     except Exception:
-        pass
-    return ""
+        return ""
 
 @app.get("/api/health")
 async def health():
@@ -50,16 +42,10 @@ async def scan(payload: ScanRequest):
         raise HTTPException(400, "Username: 2–40 символов, латиница, цифры, точка, дефис или подчёркивание.")
     async with scan_lock:
         with tempfile.TemporaryDirectory(prefix="sherlock-") as tmp:
-            output = Path(tmp) / "results.json"
-            command = [
-                "sherlock", "--local", "--json", str(output),
-                "--timeout", "10", "--print-all", "--no-color", username
-            ]
+            output = Path(tmp) / "results.csv"
+            command = ["sherlock", "--local", "--csv", "--output", str(output), "--timeout", "10", "--print-all", "--no-color", username]
             try:
-                proc = await asyncio.create_subprocess_exec(
-                    *command, stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT
-                )
+                proc = await asyncio.create_subprocess_exec(command[0], *command[1:], stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
                 stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=240)
             except asyncio.TimeoutError:
                 proc.kill()
@@ -68,33 +54,35 @@ async def scan(payload: ScanRequest):
             except FileNotFoundError:
                 raise HTTPException(503, "Официальный движок Sherlock не установлен.")
             if not output.exists():
-                detail = stdout.decode("utf-8", "replace")[-1200:]
-                raise HTTPException(502, "Sherlock не создал JSON-результат: " + detail)
+                raise HTTPException(502, "Sherlock не создал CSV-результат: " + stdout.decode("utf-8", "replace")[-800:])
             try:
-                raw = json.loads(output.read_text(encoding="utf-8"))
+                with output.open(encoding="utf-8-sig", newline="") as stream:
+                    raw = list(csv.DictReader(stream))
             except Exception:
-                raise HTTPException(502, "Не удалось прочитать JSON-результат Sherlock.")
+                raise HTTPException(502, "Не удалось прочитать CSV-результат Sherlock.")
 
     results = []
-    for site, item in list(raw.items())[:payload.limit]:
-        if not isinstance(item, dict):
-            continue
-        url = clean_url(item.get("url_user") or item.get("url"))
-        exists = item.get("exists")
-        status = "found" if exists is True else "not_found" if exists is False else "unknown"
+    for item in raw[:payload.limit]:
+        site = item.get("name") or item.get("site") or "Unknown site"
+        url = safe_https(item.get("url_user") or item.get("url"))
+        status_text = (item.get("status") or item.get("exists") or "").lower()
+        if status_text in ("claimed", "found", "true", "yes"):
+            status = "found"
+        elif status_text in ("available", "not claimed", "not_found", "false", "no"):
+            status = "not_found"
+        else:
+            status = "unknown"
         row = {"site": site, "url": url, "status": status}
-        if item.get("http_status") is not None:
-            row["httpStatus"] = item["http_status"]
-        if status == "found" and url:
+        http_status = item.get("http_status")
+        if http_status and str(http_status).isdigit():
+            row["httpStatus"] = int(http_status)
+        if status == "found":
             row["displayName"] = site
         results.append(row)
     found = sum(x["status"] == "found" for x in results)
     not_found = sum(x["status"] == "not_found" for x in results)
-    unknown = len(results) - found - not_found
-    return {
-        "username": username, "checked": len(results), "found": found,
-        "notFound": not_found, "unknown": unknown, "catalogCount": len(raw),
-        "results": results, "engine": "official-sherlock-project"
-    }
+    return {"username": username, "checked": len(results), "found": found, "notFound": not_found,
+            "unknown": len(results) - found - not_found, "catalogCount": len(raw),
+            "results": results, "engine": "official-sherlock-project"}
 
 app.mount("/", StaticFiles(directory=PUBLIC, html=True), name="public")
