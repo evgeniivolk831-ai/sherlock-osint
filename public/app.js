@@ -1,7 +1,8 @@
 const $=id=>document.getElementById(id);
 let catalog=JSON.parse(localStorage.getItem("sherlock-catalog")||"null");
-let current=[],filter="all",apiBase=localStorage.getItem("sherlock-api-base")||"";
+let current=[],filter="all",apiBase=localStorage.getItem("sherlock-api-base")||"https://sherlock-osint-api.onrender.com";
 if($("apiBase")) $("apiBase").value=apiBase;
+if(apiBase && $("serverState")) $("serverState").textContent="API Render настроен";
 function catalogInfo(){$("catalogState").textContent=catalog?`Установлено сайтов: ${Object.keys(catalog).filter(k=>k!=="$schema").length}`:"Каталог не установлен";}
 catalogInfo();
 if(!catalog){fetch("data.json").then(r=>{if(!r.ok)throw Error("catalog unavailable");return r.json()}).then(data=>{catalog=data;localStorage.setItem("sherlock-catalog",JSON.stringify(data));catalogInfo()}).catch(()=>{});}
